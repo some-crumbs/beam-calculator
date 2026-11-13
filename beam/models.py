@@ -1,4 +1,12 @@
-"""Models for the beam calculator application. -> Pydantic, Units: SI"""
+"""Modele danych belki. Jednostki: SI [m, N, N/m, N·m].
+
+Konwencja znaków:
+- oś x w prawo od lewego końca belki, oś y w górę
+- PointLoad.angle: kąt od osi +x, przeciwnie do zegara; siła w dół = -90°
+- DistributedLoad: start_force/end_force dodatnie = obciążenie w dół
+- AxialLoad.n: dodatnie = w prawo (wzdłuż +x)
+- momenty (skupione i reakcje): dodatnie przeciwnie do zegara
+"""
 
 from __future__ import annotations
 
@@ -8,8 +16,8 @@ from pydantic import BaseModel, Field, model_validator
 
 import math
 
-   # TODO(matma): poprawić centroid() dla trapezu – wzór w planie, krok 1
-   # TODO(matma): indeterminacy nie uwzględnia przegubów
+# TODO(matma): poprawić centroid() dla trapezu – wzór w planie, krok 1
+# TODO(matma): indeterminacy nie uwzględnia przegubów
 
 def _new_id() -> str:
     return uuid4().hex[:8]
@@ -57,7 +65,7 @@ class PointLoad(BaseModelWithID):
     type: Literal["point"] = "point"
     pos_x: float = Field(ge=0, description="Position of the point load along the beam.")
     force: float = Field(..., description="Magnitude of the point load.")
-    angle: float = Field(0.0, description="Angle of the point load in degrees.")
+    angle: float = Field(-90.0, description="Angle of the point load in degrees.")
 
     def components(self) -> tuple[float, float]:
         """Return the horizontal and vertical components of the point load."""
@@ -155,7 +163,7 @@ class Beam(BaseModel):
     @property
     def indeterminacy(self) -> int:
         """Calculate the degree of indeterminacy of the beam."""
-        total_reactions = sum(support.reaction_count() for support in self.supports)
+        total_reactions = sum(support.reaction_count for support in self.supports)
         total_equations = 3  # For a planar beam, we have 3 equilibrium equations
         return total_reactions - total_equations
 
