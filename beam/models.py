@@ -3,7 +3,7 @@
 Konwencja znaków:
 - oś x w prawo od lewego końca belki, oś y w górę
 - PointLoad.angle: kąt od osi +x, przeciwnie do zegara; siła w dół = -90°
-- DistributedLoad: start_force/end_force dodatnie = obciążenie w dół
+- UniformLoad: start_force/end_force dodatnie = obciążenie w dół
 - AxialLoad.n: dodatnie = w prawo (wzdłuż +x)
 - momenty (skupione i reakcje): dodatnie przeciwnie do zegara
 """
@@ -16,8 +16,9 @@ from pydantic import BaseModel, Field, model_validator
 
 import math
 
-# TODO(matma): poprawić centroid() dla trapezu – wzór w planie, krok 1
-# TODO(matma): indeterminacy nie uwzględnia przegubów
+# TODO(future): dodać kratownice
+# TODO(matma): poprawić centroid() dla trapezu
+# TODO: dodać DistributedLoad.
 
 def _new_id() -> str:
     return uuid4().hex[:8]
@@ -78,45 +79,41 @@ class PointLoad(BaseModelWithID):
         """Return the span of the point load as a tuple (start, end)."""
         return (self.pos_x, self.pos_x)
 
-class DistributedLoad(BaseModelWithID):
-    type: Literal["distributed"] = "distributed"
-    start_x: float = Field(ge=0, description="Start position of the distributed load along the beam.")
-    end_x: float = Field(ge=0, description="End position of the distributed load along the beam.")
-    start_force: float = Field(..., description="Magnitude of the distributed load at the start position.")
-    end_force: float = Field(..., description="Magnitude of the distributed load at the end position.")
+class UniformLoad(BaseModelWithID):
+    type: Literal["uniform"] = "uniform"
+    start_x: float = Field(ge=0, description="Start position of the uniform load along the beam.")
+    end_x: float = Field(ge=0, description="End position of the uniform load along the beam.")
+    q: float = Field(..., description="Magnitude of the uniform load.")
 
     @model_validator(mode="after")
-    def _check_position(self) -> DistributedLoad:
+    def _check_position(self) -> UniformLoad:
         """Ensure that start_x is less than end_x."""
-        if self.start_x >= self.end_x:
-            raise ValueError("start_x must be less than end_x")
+        if self.start_x >= self.end_x or self.q == 0:
+            raise ValueError("start_x must be less than end_x and q must not be 0")
         return self
 
     def resultant(self) -> float:
-        """Return the resultant force of the distributed load."""
-        return 0.5 * (self.start_force + self.end_force) * (self.end_x - self.start_x)
+        """Return the resultant force of the uniform load."""
+        return self.q * (self.end_x - self.start_x)
 
     def centroid(self) -> float:
-        """Return the centroid position of the distributed load."""
-        if self.start_force == self.end_force:
-            return 0.5 * (self.start_x + self.end_x)
-        else:
-            # For a triangular load, calculate the centroid based on the area
-            area = self.resultant()
-            if area == 0:
-                return 0.5 * (self.start_x + self.end_x)
-            x_centroid = (self.start_x * self.start_force + self.end_x * self.end_force) / (self.start_force + self.end_force)
-            return x_centroid
+        return (self.start_x + self.end_x) / 2
+
+    def clip(self, a: float, b: float) -> UniformLoad | None:
+        lo, hi = max(a, self.start_x), min(b, self.end_x)
+        if lo >= hi:
+            return None
+        return UniformLoad(id=self.id, start_x=lo, end_x=hi, q=self.q)
 
     def span(self) -> tuple[float, float]:
-        """Return the span of the distributed load as a tuple (start, end)."""
+        """Return the span of the uniform load as a tuple (start, end)."""
         return (self.start_x, self.end_x)
 
 class AxialLoad(BaseModelWithID):
     type: Literal["axial"] = "axial"
     start_x: float = Field(ge=0, description="Start position of the axial load along the beam.")
     end_x: float = Field(ge=0, description="End position of the axial load along the beam.")
-    n: float = Field(0.0, description="intensity of the axial load (force per unit length).")
+    n: float = Field(..., description="intensity of the axial load (force per unit length).")
 
     @model_validator(mode="after")
     def _check_position(self) -> AxialLoad:
@@ -138,7 +135,7 @@ class PointMoment(BaseModelWithID):
         """Return the span of the point moment as a tuple (start, end)."""
         return (self.pos_x, self.pos_x)
 
-Load = Annotated[Union[PointLoad, DistributedLoad, AxialLoad, PointMoment], Field(discriminator="type")]
+Load = Annotated[Union[PointLoad, UniformLoad, AxialLoad, PointMoment], Field(discriminator="type")]
 
 # -beam-
 
@@ -165,5 +162,5 @@ class Beam(BaseModel):
         """Calculate the degree of indeterminacy of the beam."""
         total_reactions = sum(support.reaction_count for support in self.supports)
         total_equations = 3  # For a planar beam, we have 3 equilibrium equations
-        return total_reactions - total_equations
+        return total_reactions - total_equations - len(self.hinges)  # Each hinge reduces the indeterminacy by 1
 
