@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 from typing import Literal, Annotated, Union
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator # pyright: ignore[reportMissingImports]
 
 import math
 
@@ -44,13 +44,19 @@ class Support(BaseModelWithID):
     def reaction_count(self) -> int:
         """Return the number of reactions based on the support type."""
         if self.type == 'fixed':
-            return 3
+            return len(self.reaction_kinds)
         elif self.type == 'roller':
-            return 1
+            return len(self.reaction_kinds)
         elif self.type == 'pinned':
-            return 2
+            return len(self.reaction_kinds)
         else:
             raise ValueError(f"Unknown support type: {self.type}")
+
+    @property
+    def reaction_kinds(self) -> list[str]:
+        return {"fixed": ["horizontal", "vertical", "moment"],
+                "pinned": ["horizontal", "vertical"],
+                "roller": ["vertical"]}[self.type]
 
     def span(self) -> tuple[float, float]:
         """Return the span of the support as a tuple (start, end)."""

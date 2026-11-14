@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel
+from pydantic import BaseModel # pyright: ignore[reportMissingImports]
 
 class Reaction(BaseModel):
     support_id: str
