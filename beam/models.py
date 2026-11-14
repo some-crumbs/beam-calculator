@@ -3,7 +3,7 @@
 Konwencja znaków:
 - oś x w prawo od lewego końca belki, oś y w górę
 - PointLoad.angle: kąt od osi +x, przeciwnie do zegara; siła w dół = -90°
-- UniformLoad: start_force/end_force dodatnie = obciążenie w dół
+- UniformLoad.q: dodatnie = obciążenie w dół
 - AxialLoad.n: dodatnie = w prawo (wzdłuż +x)
 - momenty (skupione i reakcje): dodatnie przeciwnie do zegara
 """
@@ -16,8 +16,6 @@ from pydantic import BaseModel, Field, model_validator
 
 import math
 
-# TODO(future): dodać kratownice
-# TODO(matma): poprawić centroid() dla trapezu
 # TODO: dodać DistributedLoad.
 
 def _new_id() -> str:
@@ -29,6 +27,11 @@ class BaseModelWithID(BaseModel):
     def span(self) -> tuple[float, float]:
         """Return the span of the element as a tuple (start, end)."""
         raise NotImplementedError("Subclasses must implement the span method.")
+
+class LoadBase(BaseModelWithID):
+    def effect(self, x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+        """Calculate the effect of the load at position x0, considering only loads to the left of left_of."""
+        raise NotImplementedError("Subclasses must implement the effect method.")
 
 
 # -supports and hinges-
@@ -62,11 +65,19 @@ class Hinge(BaseModelWithID):
 
 # -loads-
 
-class PointLoad(BaseModelWithID):
+class PointLoad(LoadBase):
     type: Literal["point"] = "point"
     pos_x: float = Field(ge=0, description="Position of the point load along the beam.")
     force: float = Field(..., description="Magnitude of the point load.")
     angle: float = Field(-90.0, description="Angle of the point load in degrees.")
+
+    def effect(self, x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+        if self.pos_x < left_of:
+            fx, fy = self.components()
+            M = fy * (self.pos_x - x0)
+            return (fx, fy, M)
+        else:
+            return (0.0, 0.0, 0.0)
 
     def components(self) -> tuple[float, float]:
         """Return the horizontal and vertical components of the point load."""
@@ -79,7 +90,7 @@ class PointLoad(BaseModelWithID):
         """Return the span of the point load as a tuple (start, end)."""
         return (self.pos_x, self.pos_x)
 
-class UniformLoad(BaseModelWithID):
+class UniformLoad(LoadBase):
     type: Literal["uniform"] = "uniform"
     start_x: float = Field(ge=0, description="Start position of the uniform load along the beam.")
     end_x: float = Field(ge=0, description="End position of the uniform load along the beam.")
@@ -88,9 +99,17 @@ class UniformLoad(BaseModelWithID):
     @model_validator(mode="after")
     def _check_position(self) -> UniformLoad:
         """Ensure that start_x is less than end_x."""
-        if self.start_x >= self.end_x or self.q == 0:
-            raise ValueError("start_x must be less than end_x and q must not be 0")
+        if self.start_x >= self.end_x:
+            raise ValueError("start_x must be less than end_x")
         return self
+
+    def effect(self, x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+        part = self.clip(0, left_of)
+        if part is None:
+            return (0.0, 0.0, 0.0)
+        fy = -part.resultant()
+        M = fy * (part.centroid() - x0)
+        return (0.0, fy, M)
 
     def resultant(self) -> float:
         """Return the resultant force of the uniform load."""
@@ -109,7 +128,7 @@ class UniformLoad(BaseModelWithID):
         """Return the span of the uniform load as a tuple (start, end)."""
         return (self.start_x, self.end_x)
 
-class AxialLoad(BaseModelWithID):
+class AxialLoad(LoadBase):
     type: Literal["axial"] = "axial"
     start_x: float = Field(ge=0, description="Start position of the axial load along the beam.")
     end_x: float = Field(ge=0, description="End position of the axial load along the beam.")
@@ -122,14 +141,25 @@ class AxialLoad(BaseModelWithID):
             raise ValueError("start_x must be less than end_x")
         return self
 
+    def effect(self, x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+        hi = min(self.end_x, left_of)
+        if hi > self.start_x:
+            return ((self.n*(hi - self.start_x)), 0.0, 0.0)
+        return (0.0, 0.0, 0.0)
+
     def span(self) -> tuple[float, float]:
         """Return the span of the axial load as a tuple (start, end)."""
         return (self.start_x, self.end_x)
 
-class PointMoment(BaseModelWithID):
+class PointMoment(LoadBase):
     type: Literal["moment"] = "moment"
     pos_x: float = Field(ge=0, description="Position of the point moment along the beam.")
     moment: float = Field(..., description="Magnitude of the point moment.")
+
+    def effect(self, x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+        if self.pos_x < left_of:
+            return (0.0, 0.0, self.moment)
+        return (0.0, 0.0, 0.0)
 
     def span(self) -> tuple[float, float]:
         """Return the span of the point moment as a tuple (start, end)."""
