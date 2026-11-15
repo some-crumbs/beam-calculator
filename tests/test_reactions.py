@@ -47,3 +47,12 @@ def test_indetermine():
     with raises(ValueError):
         solve_reactions(beam)
 
+def test_kind_id():
+    beam = make_beam(
+        supports=[{"type": "pinned", "pos_x": 0}, {"type": "roller", "pos_x": 6}],
+        loads=[{"type": "point", "pos_x": 3, "force": 100}],
+    )
+    r = solve_reactions(beam)
+    assert [x.kind for x in r] == ["horizontal", "vertical", "vertical"]
+    assert [x.support_id for x in r] == [beam.supports[0].id, beam.supports[0].id, beam.supports[1].id]
+

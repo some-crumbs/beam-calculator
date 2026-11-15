@@ -43,14 +43,7 @@ class Support(BaseModelWithID):
     @property
     def reaction_count(self) -> int:
         """Return the number of reactions based on the support type."""
-        if self.type == 'fixed':
-            return len(self.reaction_kinds)
-        elif self.type == 'roller':
-            return len(self.reaction_kinds)
-        elif self.type == 'pinned':
-            return len(self.reaction_kinds)
-        else:
-            raise ValueError(f"Unknown support type: {self.type}")
+        return len(self.reaction_kinds)
 
     @property
     def reaction_kinds(self) -> list[str]:

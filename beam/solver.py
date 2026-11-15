@@ -3,8 +3,39 @@ from __future__ import annotations
 import math
 import numpy as np # pyright: ignore[reportMissingImports]
 
-from .models import Beam, Load
+from .models import Beam, Load, PointLoad, PointMoment
 from .results import BeamResult, Reaction
+
+def _load_points(beam: Beam, n: int = 501, eps: float = 1e-9) -> np.ndarray:
+    special = []
+    for el in [*beam.supports, *beam.loads]:
+        start, end = el.span()
+        if start == end:
+            special.append(start)
+    special = np.array(special)
+
+    points = np.concatenate([
+        np.linspace(0, beam.length, n),
+        special - eps,
+        special + eps,
+    ])
+
+    return np.unique(np.clip(points, 0, beam.length))
+
+def _reactions_as_loads(beam: Beam, reactions: list[Reaction]) -> list[Load]:
+    supports = {s.id: s for s in beam.supports}
+    loads = []
+
+    for r in reactions:
+        xs = supports[r.support_id].pos_x
+        if r.kind == "horizontal":
+            loads.append(PointLoad(pos_x=xs, force=r.value, angle=0))
+        elif r.kind =="vertical":
+            loads.append(PointLoad(pos_x=xs, force=r.value, angle=90))
+        else:
+            loads.append(PointMoment(pos_x=xs, moment=r.value))
+
+    return loads
 
 def solve(beam: Beam) -> BeamResult:
     raise NotImplementedError  # Placeholder for the actual implementation of the beam analysis algorithm
@@ -66,4 +97,15 @@ def solve_reactions(beam: Beam) -> list[Reaction]:
     ]
 
 def internal_forces(beam: Beam, reactions: list[Reaction]) -> BeamResult:
-    raise NotImplementedError  # Placeholder for the actual implementation of the internal forces calculation
+    xs = _load_points(beam)
+    r_loads = _reactions_as_loads(beam, reactions)
+    all_loads = [*beam.loads, *r_loads]
+    N, V, M = [], [], []
+
+    for x in xs:
+        fx, fy, mx = total_effect(all_loads, x0=x, left_of=x)
+        N.append(-fx)
+        V.append(fy)
+        M.append(-mx)
+
+    return BeamResult(reactions=reactions, x=xs.tolist(), N=N, V=V, M=M)
