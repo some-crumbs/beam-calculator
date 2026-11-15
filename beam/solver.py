@@ -38,7 +38,8 @@ def _reactions_as_loads(beam: Beam, reactions: list[Reaction]) -> list[Load]:
     return loads
 
 def solve(beam: Beam) -> BeamResult:
-    raise NotImplementedError  # Placeholder for the actual implementation of the beam analysis algorithm
+    reactions = solve_reactions(beam)
+    return internal_forces(beam, reactions)
 
 # total_effect calculates the total effect of a list of loads at a specific point x0, considering only loads to the left of a specified position (left_of).
 def total_effect(loads: list[Load], x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
