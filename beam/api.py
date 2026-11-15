@@ -13,3 +13,6 @@ def post_solve(beam: Beam) -> BeamResult:
         return solve(beam)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+from fastapi.staticfiles import StaticFiles
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

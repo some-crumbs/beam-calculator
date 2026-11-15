@@ -6,6 +6,11 @@ import numpy as np # pyright: ignore[reportMissingImports]
 from .models import Beam, Load, PointLoad, PointMoment
 from .results import BeamResult, Reaction
 
+TOL = 1e-9
+
+def _chop(values: list[float], tol: float = TOL) -> list[float]:
+    return [0.0 if abs(v) < tol else v for v in values]
+
 def _load_points(beam: Beam, n: int = 501, eps: float = 1e-9) -> np.ndarray:
     special = []
     for el in [*beam.supports, *beam.loads]:
@@ -93,7 +98,7 @@ def solve_reactions(beam: Beam) -> list[Reaction]:
     r_value = np.linalg.solve(matrix_A, vector_b)
 
     return [
-        Reaction(support_id = support.id, kind = kind, value = float(value))
+        Reaction(support_id = support.id, kind = kind, value = _chop([float(value)])[0])
         for (support, kind), value in zip(u_reactions, r_value)
     ]
 
@@ -109,4 +114,4 @@ def internal_forces(beam: Beam, reactions: list[Reaction]) -> BeamResult:
         V.append(fy)
         M.append(-mx)
 
-    return BeamResult(reactions=reactions, x=xs.tolist(), N=N, V=V, M=M)
+    return BeamResult(reactions=reactions, x=xs.tolist(), N=_chop(N), V=_chop(V), M=_chop(M))

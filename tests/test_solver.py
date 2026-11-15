@@ -62,3 +62,9 @@ def test_fixed_and_roller():
     )
     with raises(ValueError):
         solve(b)
+
+def test_vertical_load_gives_exact_zero_N():
+    b = simply_supported([{"type": "point", "pos_x": 3, "force": 1000}])
+    r = solve(b)
+    assert all(n == 0.0 for n in r.N)              # dokładnie zero, nie approx
+    assert r.reactions[0].value == 0.0             # reakcja pozioma też
