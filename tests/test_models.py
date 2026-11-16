@@ -10,7 +10,7 @@ def test_point_load_down():
 
 def test_uniform_resultant_and_centroid():
     assert ul().resultant() == pytest.approx(60)    # 10 N/m · 6 m
-    assert ul().centroid() == pytest.approx(5)      # środek odcinka [2, 8]
+    assert ul().centroid() == pytest.approx(5)      # midpoint of [2, 8]
 
 def test_clip_inside():
     part = ul().clip(0, 5)
@@ -29,11 +29,11 @@ def test_axial_requires_n():
         AxialLoad(start_x=0, end_x=1)
 
 @pytest.mark.parametrize("supports, hinges, n", [
-    ([("pinned", 0), ("roller", 6)], [], 0),   # wolnopodparta
-    ([("fixed", 0)], [], 0),                   # wspornik
-    ([("fixed", 0), ("roller", 6)], [], 1),    # niewyznaczalna
-    ([("fixed", 0), ("roller", 6)], [3], 0),   # belka Gerbera
-    ([("roller", 0), ("roller", 6)], [], -1),  # mechanizm
+    ([("pinned", 0), ("roller", 6)], [], 0),   # simply supported
+    ([("fixed", 0)], [], 0),                   # cantilever
+    ([("fixed", 0), ("roller", 6)], [], 1),    # statically indeterminate
+    ([("fixed", 0), ("roller", 6)], [3], 0),   # Gerber beam
+    ([("roller", 0), ("roller", 6)], [], -1),  # mechanism
 ])
 def test_indeterminacy(supports, hinges, n):
     beam = Beam(length=6, units="SI",

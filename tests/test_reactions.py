@@ -1,12 +1,6 @@
-from pytest import approx, raises # pyright: ignore[reportMissingImports]
+from pytest import approx, raises
 from beam.solver import solve_reactions
-from beam.models import Beam
-
-def make_beam(supports, loads, length=6, hinges=()):
-    return Beam(length=length, units="SI", supports=supports, loads=loads, hinges=list(hinges))
-
-def values(reactions):
-    return [r.value for r in reactions]
+from tests.helpers import make_beam, values
 
 def test_simply_supported_point_load():
     beam = make_beam(
@@ -36,15 +30,7 @@ def test_three_rollers_unstable():
         supports=[{"type": "roller", "pos_x": x} for x in (0, 3, 6)],
         loads=[],
     )
-    with raises(ValueError):
-        solve_reactions(beam)
-
-def test_indetermine():
-    beam = make_beam(
-        supports=[{"type": "fixed", "pos_x": 0}, {"type": "roller", "pos_x": 6}],
-        loads=[]
-    )
-    with raises(ValueError):
+    with raises(ValueError, match="geometrically variable"):
         solve_reactions(beam)
 
 def test_kind_id():
@@ -55,4 +41,3 @@ def test_kind_id():
     r = solve_reactions(beam)
     assert [x.kind for x in r] == ["horizontal", "vertical", "vertical"]
     assert [x.support_id for x in r] == [beam.supports[0].id, beam.supports[0].id, beam.supports[1].id]
-

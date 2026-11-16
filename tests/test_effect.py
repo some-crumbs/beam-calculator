@@ -1,6 +1,6 @@
 import beam.solver as solver
 from beam.models import PointLoad, UniformLoad, AxialLoad, PointMoment
-from pytest import approx # pyright: ignore[reportMissingImports]
+from pytest import approx
 
 def test_total_effect_point_load():
     load = PointLoad(pos_x=3, force=1000)
@@ -28,9 +28,8 @@ def test_total_effect_uniform_load_left_of():
     fx, fy, m = solver.total_effect([load], x0=5, left_of=5)
     assert approx(fx, abs=1e-9) == 0.0
     assert approx(fy, abs=1e-6) == -30.0  # Resultant of clipped uniform load: q * (left_of - start_x) = -10 * 3 = -30
-    assert approx(m, abs=1e-6) == 45.0   # Moment at x0=5 due to clipped uniform load: fy * (centroid - x0) = 15 * 3 = 45
+    assert approx(m, abs=1e-6) == 45.0   # Moment at x0=5 due to clipped uniform load: fy * (centroid - x0) = -30 * (3.5 - 5) = 45
 
-# test vscode suggested
 def test_total_effect_multiple_loads():
     point_load = PointLoad(pos_x=3, force=1000)
     uniform_load = UniformLoad(start_x=2, end_x=8, q=10)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-import numpy as np # pyright: ignore[reportMissingImports]
+import numpy as np
 
 from .models import Beam, Load, PointLoad, PointMoment
 from .results import BeamResult, Reaction
@@ -9,9 +9,11 @@ from .results import BeamResult, Reaction
 TOL = 1e-9
 
 def _chop(values: list[float], tol: float = TOL) -> list[float]:
+    """Treats every value < 1e-9 as a zero"""
     return [0.0 if abs(v) < tol else v for v in values]
 
 def _load_points(beam: Beam, n: int = 501, eps: float = 1e-9) -> np.ndarray:
+    """Adds points of load so the graph isnt smooth and is a jump in a point of load"""
     special = []
     for el in [*beam.supports, *beam.loads]:
         start, end = el.span()
@@ -28,6 +30,7 @@ def _load_points(beam: Beam, n: int = 501, eps: float = 1e-9) -> np.ndarray:
     return np.unique(np.clip(points, 0, beam.length))
 
 def _reactions_as_loads(beam: Beam, reactions: list[Reaction]) -> list[Load]:
+    """Treats reactions as loads"""
     supports = {s.id: s for s in beam.supports}
     loads = []
 
@@ -43,11 +46,12 @@ def _reactions_as_loads(beam: Beam, reactions: list[Reaction]) -> list[Load]:
     return loads
 
 def solve(beam: Beam) -> BeamResult:
+    """Solves a beam"""
     reactions = solve_reactions(beam)
     return internal_forces(beam, reactions)
 
-# total_effect calculates the total effect of a list of loads at a specific point x0, considering only loads to the left of a specified position (left_of).
 def total_effect(loads: list[Load], x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+    """Calculates the total effect of all of the loads"""
     fx = fy = m = 0.0
     for load in loads:
         dfx, dfy, dm = load.effect(x0, left_of)
@@ -57,8 +61,11 @@ def total_effect(loads: list[Load], x0: float, left_of: float = math.inf) -> tup
     return (fx, fy, m)
 
 def solve_reactions(beam: Beam) -> list[Reaction]:
-    if beam.indeterminacy != 0:
-        raise ValueError("Belka niewyznaczalna lub mechanizm")
+    """Solves reactions"""
+    if beam.indeterminacy > 0:
+        raise ValueError("Beam is indeterminate")
+    elif beam.indeterminacy < 0:
+        raise ValueError("Mechanism")
 
     u_reactions = []
     for support in beam.supports:
@@ -86,14 +93,14 @@ def solve_reactions(beam: Beam) -> list[Reaction]:
             elif kind == "moment":
                 matrix_A[row, j] = 1
 
-    # wypełnianie wektora b do równania A * r = b
+    # fill vector b of the system A * r = b
     fx, fy, m = total_effect(beam.loads, x0=0)
     vector_b[0], vector_b[1], vector_b[2] = -fx, -fy, -m
     for row, hinge in enumerate(beam.hinges, start=3):
         vector_b[row] = -total_effect(beam.loads, x0=hinge.pos_x, left_of=hinge.pos_x)[2]
 
     if np.linalg.matrix_rank(matrix_A) != n:
-        raise ValueError("Układ geometrycznie zmienny")
+        raise ValueError("Beam geometrically variable")
     
     r_value = np.linalg.solve(matrix_A, vector_b)
 
@@ -103,6 +110,7 @@ def solve_reactions(beam: Beam) -> list[Reaction]:
     ]
 
 def internal_forces(beam: Beam, reactions: list[Reaction]) -> BeamResult:
+    """Solves internal forces and returns ready data sets for graphing"""
     xs = _load_points(beam)
     r_loads = _reactions_as_loads(beam, reactions)
     all_loads = [*beam.loads, *r_loads]

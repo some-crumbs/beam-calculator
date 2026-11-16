@@ -1,22 +1,23 @@
-"""Modele danych belki. Jednostki: SI [m, N, N/m, N·m].
+"""Beam data models. Units: SI [m, N, N/m, N·m] or Imperial [ft, lbf, lbf/ft, lbf·ft].
 
-Konwencja znaków:
-- oś x w prawo od lewego końca belki, oś y w górę
-- PointLoad.angle: kąt od osi +x, przeciwnie do zegara; siła w dół = -90°
-- UniformLoad.q: dodatnie = obciążenie w dół
-- AxialLoad.n: dodatnie = w prawo (wzdłuż +x)
-- momenty (skupione i reakcje): dodatnie przeciwnie do zegara
+Sign convention:
+- x axis points right from the left end of the beam, y axis points up
+- PointLoad.angle: angle from the +x axis, counterclockwise; downward force = -90°
+- UniformLoad.q: positive = load acting downward
+- AxialLoad.n: positive = acting to the right (along +x)
+- moments (point moments and reactions): positive counterclockwise
 """
+
+# TODO: units Imperial
+# TODO: add DistributedLoad.
 
 from __future__ import annotations
 
 from uuid import uuid4
 from typing import Literal, Annotated, Union
-from pydantic import BaseModel, Field, model_validator # pyright: ignore[reportMissingImports]
+from pydantic import BaseModel, Field, model_validator
 
 import math
-
-# TODO: dodać DistributedLoad.
 
 def _new_id() -> str:
     return uuid4().hex[:8]
@@ -47,6 +48,7 @@ class Support(BaseModelWithID):
 
     @property
     def reaction_kinds(self) -> list[str]:
+        """Return kinds of reactions for given support"""
         return {"fixed": ["horizontal", "vertical", "moment"],
                 "pinned": ["horizontal", "vertical"],
                 "roller": ["vertical"]}[self.type]
@@ -71,6 +73,7 @@ class PointLoad(LoadBase):
     angle: float = Field(-90.0, description="Angle of the point load in degrees.")
 
     def effect(self, x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+        """Retun the effect of the load"""
         if self.pos_x < left_of:
             fx, fy = self.components()
             M = fy * (self.pos_x - x0)
@@ -103,6 +106,7 @@ class UniformLoad(LoadBase):
         return self
 
     def effect(self, x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+        """Retun the effect of a load"""
         part = self.clip(0, left_of)
         if part is None:
             return (0.0, 0.0, 0.0)
@@ -115,9 +119,11 @@ class UniformLoad(LoadBase):
         return self.q * (self.end_x - self.start_x)
 
     def centroid(self) -> float:
+        """Return the centroid point of a uniformLoad"""
         return (self.start_x + self.end_x) / 2
 
     def clip(self, a: float, b: float) -> UniformLoad | None:
+        """Clip Loads for internal forces"""
         lo, hi = max(a, self.start_x), min(b, self.end_x)
         if lo >= hi:
             return None
@@ -141,6 +147,7 @@ class AxialLoad(LoadBase):
         return self
 
     def effect(self, x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+        """Retun the effect of a load"""
         hi = min(self.end_x, left_of)
         if hi > self.start_x:
             return ((self.n*(hi - self.start_x)), 0.0, 0.0)
@@ -156,6 +163,7 @@ class PointMoment(LoadBase):
     moment: float = Field(..., description="Magnitude of the point moment.")
 
     def effect(self, x0: float, left_of: float = math.inf) -> tuple[float, float, float]:
+        """Retun the effect of a load"""
         if self.pos_x < left_of:
             return (0.0, 0.0, self.moment)
         return (0.0, 0.0, 0.0)
@@ -177,13 +185,14 @@ class Beam(BaseModel):
 
     @model_validator(mode="after")
     def _check_geometry(self) -> Beam:
+        """Checks if ids aren't duplicated and if elements fit in a beam"""
         elements = [*self.supports, *self.hinges, *self.loads]
         for el in elements:
             if el.span()[1] > self.length:
-                raise ValueError(f"Element {el.id} wychodzi poza belkę")
+                raise ValueError(f"Element {el.id} is not inside the beam")
         ids = [el.id for el in elements]
         if len(ids) != len(set(ids)):
-            raise ValueError("Zduplikowane id elementów")
+            raise ValueError("Duplicated id of an element")
         return self
 
     @property

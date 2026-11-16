@@ -1,11 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from .results import BeamResult
 from .models import Beam
 from .solver import solve
 
 app = FastAPI(title="beam-calculator")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 @app.post("/solve", response_model=BeamResult)
 def post_solve(beam: Beam) -> BeamResult:
@@ -14,5 +14,4 @@ def post_solve(beam: Beam) -> BeamResult:
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-from fastapi.staticfiles import StaticFiles
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
