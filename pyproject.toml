@@ -1,7 +1,7 @@
 [project]
 name = "beam-calculator"
 version = "0.1.0"
-description = "Add your description here"
+description = "Calculator that solves static beams, shows graphs of bending moments, shear forces and normal forces."
 readme = "README.md"
 requires-python = ">=3.15"
 dependencies = [

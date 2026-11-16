@@ -1,10 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <link rel="stylesheet" href="style.css">
+    <title>Kalkulator belek w statyce</title>
 </head>
+
 <body>
     <h1>Kalkulator belek w statyce</h1>
     <button id="calculate">
@@ -14,131 +17,139 @@
         Wyczyść
     </button>
     <div id="form">
-        <form>
-            <input type="number" step="any" name="długość belki" id="length" min="1" value="1" required> 
-            <label for="length">
-                Długość belki
+        <input type="number" step="any" name="długość belki" id="length" min="1" value="6" required>
+        <label for="length">
+            Długość belki
+        </label>
+        <br>
+        <button id="confirm_length" type="button">
+            Zatwierdź
+        </button>
+
+        <section>
+            <h2>Podpory</h2>
+            <input type="range" step="0.1" max="0" name="support-pos-x" id="support_pos_x" class="slide_val pos"
+                data-output="sup_pos">
+            <label for="support_pos_x">
+                Położenie podpory: <span class="slide_val_out" id="sup_pos"></span>
             </label>
             <br>
-            <button id="confirm_length" type="button">
-                Zatwierdź
+            <input type="radio" name="support-type" id="fixed" value="fixed" checked>
+            <label for="fixed">
+                Utwierdzenie stałe
+            </label>
+            <br>
+            <input type="radio" name="support-type" id="pinned" value="pinned">
+            <label for="pinned">
+                Podpora stała
+            </label>
+            <br>
+            <input type="radio" name="support-type" id="roller" value="roller">
+            <label for="roller">
+                Podpora ruchoma
+            </label>
+            <br>
+            <button id="add_support" type="button">
+                Dodaj
             </button>
+        </section>
 
-            <section title="Podpory">
-                <input type="range" step="0.1" max="0" name="support-pos-x" id="support_pos_x" class="slide_val pos" data-output="sup_pos"> 
-                <label for="support_pos_x">
-                    Połozenie podpory: <span class="slide_val_out" id="sup_pos"></span>
+        <br><br>
+
+        <section>
+            <h2>Obciążenia</h2>
+            <select name="load-type" id="load_type">
+                <option value="point">Siła skupiona</option>
+                <option value="uniform">Obciążenie ciągłe</option>
+                <option value="moment">Moment skupiony, skrętnik</option>
+                <option value="axial">Siła osiowa</option>
+            </select>
+            <div class="fields" data-type="point">
+                <input type="number" name="force-value" id="force_value" required>
+                <label for="force_value">
+                    Wartość siły
                 </label>
                 <br>
-                <input type="radio" name="support-type" id="fixed" value="fixed" checked> 
-                <label for="fixed">
-                    Utwierdzenie stałe
+                <input type="range" name="force-position" id="load_pos_x" max="0" step="0.1" class="slide_val pos"
+                    data-output="load_pos">
+                <label for="load_pos_x">
+                    Położenie siły: <span id="load_pos" class="slide_val_out"></span>
                 </label>
                 <br>
-                <input type="radio" name="support-type" id="pinned" value="pinned"> 
-                <label for="pinned">
-                    Podpora stała
+                <input type="range" name="force-angle" id="force_angle" min="-180" max="180" value="-90" step="0.5"
+                    class="slide_val" data-output="force_a">
+                <label for="force_angle">
+                    Kąt przyłożenia siły: <span id="force_a" class="slide_val_out"></span>
                 </label>
                 <br>
-                <input type="radio" name="support-type" id="roller" value="roller"> 
-                <label for="roller">
-                    Podpora ruchoma
+            </div>
+            <div class="fields" data-type="uniform" hidden>
+                <input type="number" name="load-value" id="load_value" required>
+                <label for="load_value">
+                    Wartość obciążenia
                 </label>
                 <br>
-                <button id="add_support" type="button">
-                    Dodaj
-                </button>
-            </section>
-
-            <br><br>
-
-            <section title="Obciązenia">
-                <select name="load-type" id="load_type">
-                    <option value="point">Siła skupiona</option>
-                    <option value="uniform">Obciązenie ciągłe</option>
-                    <option value="moment">Moment skupiony, skrętnik</option>
-                    <option value="axial">Siła osiowa</option>
-                </select>
-                <div class="fields" data-type="point" >
-                    <input type="number" name="force-value" id="force_value" required> 
-                    <label for="force_value">
-                        Wartość siły
-                    </label>
-                    <br>
-                    <input type="range" name="force-position" id="load_pos_x" max="0" step="0.1" class="slide_val pos" data-output="load_pos">
-                    <label for="load_pos_x">
-                        Połozenie siły: <span id="load_pos" class="slide_val_out"></span>
-                    </label>
-                    <br>
-                    <input type="range" name="force-angle" id="force_angle" min="-180" max="180" value="-90" step="0.5" class="slide_val" data-output="force_a">
-                    <label for="force_angle">
-                        Kąt przyłozenia siły: <span id="force_a" class="slide_val_out"></span>
-                    </label>
-                    <br>
-                </div>
-                <div class="fields" data-type="uniform" hidden>
-                    <input type="number" name="load-value" id="load_value" required> 
-                    <label for="load_value">
-                        Wartość obciązenia
-                    </label>
-                    <br>
-                    <input type="range" name="q-start" id="q_start" max="0" step="0.1" class="slide_val pos" data-output="q0"> 
-                    <label for="q_start">
-                        Początek obciązenia: <span id="q0" class="slide_val_out"></span>
-                    </label>
-                    <br>
-                    <input type="range" name="q-end" id="q_end" max="0" step="0.1" class="slide_val pos" data-output="qE"> 
-                    <label for="q_end">
-                        Koniec obciązenia: <span id="qE" class="slide_val_out"></span>
-                    </label>
-                    <br>
-                </div>
-                <div class="fields" data-type="moment" hidden>
-                    <input type="number" name="moment-value" id="moment_value" required> 
-                    <label for="moment_value">
-                        Wartość momentu skupionego
-                    </label>
-                    <br>
-                    <input type="range" name="moment-pos-x" id="moment_pos_x" max="0" step="0.1" class="slide_val pos" data-output="moment_pos"> 
-                    <label for="moment_pos_x">
-                        Połozenie momentu skupionego: <span id="moment_pos" class="slide_val_out"></span>
-                    </label>
-                </div>
-                <div class="fields" data-type="axial" hidden>
-                    <input type="number" name="axial-value" id="axial_value" required> 
-                    <label for="axial_value">
-                        Wartość siłly osiowej
-                    </label>
-                    <br>
-                    <input type="range" name="axial-q-start" id="axial_q_start" max="0" step="0.1" class="slide_val pos" data-output="a0"> 
-                    <label for="axial_q_start">
-                        Początek obciązenia: <span id="a0" class="slide_val_out"></span>
-                    </label>
-                    <br>
-                    <input type="range" name="axial-q-end" id="axial_q_end" max="0" step="0.1" class="slide_val pos" data-output="aE"> 
-                    <label for="axial_q_end">
-                        Koniec obciązenia: <span id="aE" class="slide_val_out"></span>
-                    </label>
-                </div>
-                <button id="add_load" type="button">
-                    Dodaj
-                </button>
-            </section>
-
-            <br><br>
-
-            <section title="przegub">
-                <input type="range" step="0.1" max="0" name="hinge-position" id="hinge_pos_x" class="slide_val pos" data-output="hinge_pos"> 
-                <label for="hinge_pos_x">
-                    Połozenie przegubu: <span id="hinge_pos" class="slide_val_out"></span>
+                <input type="range" name="q-start" id="q_start" max="0" step="0.1" class="slide_val pos"
+                    data-output="q0">
+                <label for="q_start">
+                    Początek obciążenia: <span id="q0" class="slide_val_out"></span>
                 </label>
                 <br>
-                <button id="add_hinge" type="button">
-                    Dodaj
-                </button>
-            </section>
+                <input type="range" name="q-end" id="q_end" max="0" step="0.1" class="slide_val pos" data-output="qE">
+                <label for="q_end">
+                    Koniec obciążenia: <span id="qE" class="slide_val_out"></span>
+                </label>
+                <br>
+            </div>
+            <div class="fields" data-type="moment" hidden>
+                <input type="number" name="moment-value" id="moment_value" required>
+                <label for="moment_value">
+                    Wartość momentu skupionego
+                </label>
+                <br>
+                <input type="range" name="moment-pos-x" id="moment_pos_x" max="0" step="0.1" class="slide_val pos"
+                    data-output="moment_pos">
+                <label for="moment_pos_x">
+                    Położenie momentu skupionego: <span id="moment_pos" class="slide_val_out"></span>
+                </label>
+            </div>
+            <div class="fields" data-type="axial" hidden>
+                <input type="number" name="axial-value" id="axial_value" required>
+                <label for="axial_value">
+                    Wartość siły osiowej
+                </label>
+                <br>
+                <input type="range" name="axial-q-start" id="axial_q_start" max="0" step="0.1" class="slide_val pos"
+                    data-output="a0">
+                <label for="axial_q_start">
+                    Początek obciążenia: <span id="a0" class="slide_val_out"></span>
+                </label>
+                <br>
+                <input type="range" name="axial-q-end" id="axial_q_end" max="0" step="0.1" class="slide_val pos"
+                    data-output="aE">
+                <label for="axial_q_end">
+                    Koniec obciążenia: <span id="aE" class="slide_val_out"></span>
+                </label>
+            </div>
+            <button id="add_load" type="button">
+                Dodaj
+            </button>
+        </section>
 
-        </form>
+        <br><br>
+
+        <section>
+            <h2>Przeguby</h2>
+            <input type="range" step="0.1" max="0" name="hinge-position" id="hinge_pos_x" class="slide_val pos"
+                data-output="hinge_pos">
+            <label for="hinge_pos_x">
+                Położenie przegubu: <span id="hinge_pos" class="slide_val_out"></span>
+            </label>
+            <br>
+            <button id="add_hinge" type="button">
+                Dodaj
+            </button>
+        </section>
     </div>
     <pre id="out"></pre>
     <div id="graphs">
@@ -155,4 +166,5 @@
     <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

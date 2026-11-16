@@ -7,7 +7,7 @@ const state = {
 };
 
 function addLoad(load) {
-    state.loads.push(load); 
+    state.loads.push(load);
     render();
 }
 
@@ -34,7 +34,7 @@ function render() {
 async function solve(beam) {
     const result = await fetch("/solve", {
         method: "POST",
-        headers: {"Content-type": "application/json" },
+        headers: { "Content-type": "application/json" },
         body: JSON.stringify(beam),
     });
     const data = await result.json();
@@ -44,13 +44,20 @@ async function solve(beam) {
 
 async function onCalculate() {
     const out = document.querySelector("#out");
-    out.textContent = "Liczę…";
+    out.textContent = "Solving…";
     try {
         const data = await solve(state);
         out.textContent = JSON.stringify(data.reactions, null, 2);
         drawGraphs(data);
     } catch (err) {
-        out.textContent = "Błąd:\n" + JSON.stringify(err, null, 2)
+        if (typeof (err.detail) === "string") {
+            out.textContent = "Error:\n" + err.detail
+        } else if (Array.isArray(err.detail)) {
+            out.textContent = "Error:\n" + err.detail[0].msg
+        } else {
+            out.textContent = "Error:\n" + err.message
+            console.log(err)
+        }
     }
 }
 
@@ -61,18 +68,18 @@ function plot(divId, x, y, type, color, invertY = false) {
         y: y,
         mode: "lines",
         fill: "tozeroy",
-        line: {color: color},
+        line: { color: color },
         hovertemplate: `x = %{x:.3f} m<br>${type} = %{y:.2f} ${unit}<extra></extra>`,
     };
 
     const layout = {
-        title: {text: type},
+        title: { text: type },
         height: 220,
-        margin: {l: 60, r: 20, t: 40, b: 40},
-        xaxis: {title:{text: "x [m]"}, range:[0, x[x.length - 1]]},
-        yaxis: {title:{text: unit}, autorange: invertY ? "reversed" : true},
+        margin: { l: 60, r: 20, t: 40, b: 40 },
+        xaxis: { title: { text: "x [m]" }, range: [0, x[x.length - 1]] },
+        yaxis: { title: { text: unit }, autorange: invertY ? "reversed" : true },
     };
-    Plotly.newPlot(divId, [trace], layout, {displayModeBar: false, responsive: true});
+    Plotly.newPlot(divId, [trace], layout, { displayModeBar: false, responsive: true });
 }
 
 function drawGraphs(data) {
@@ -83,7 +90,17 @@ function drawGraphs(data) {
 
 function getLength() {
     const length = document.querySelector("#length");
-    if(!length.reportValidity()) return;
+    const elements = [...state.supports, ...state.loads, ...state.hinges]
+
+    if (!length.reportValidity()) return;
+
+    const newLength = length.valueAsNumber;
+
+    if (elements.some(el => (el.end_x ?? el.pos_x) > newLength)) {
+        document.getElementById("out").textContent = "An element is out of the beam"
+        return;
+    }
+
     state.length = length.valueAsNumber;
     handlePositionSliders();
 }
@@ -92,7 +109,7 @@ getLength();
 function getSupport() {
     const support_pos = document.querySelector("#support_pos_x")
     const support_type = document.querySelector('input[name="support-type"]:checked')
-    addSupport({type: support_type.value, pos_x: support_pos.valueAsNumber});
+    addSupport({ type: support_type.value, pos_x: support_pos.valueAsNumber });
 }
 
 function getLoadType() {
@@ -102,7 +119,7 @@ function getLoadType() {
 
 function getHinge() {
     const hinge_pos = document.getElementById("hinge_pos_x").valueAsNumber;
-    let hinge = {pos_x: hinge_pos};
+    let hinge = { pos_x: hinge_pos };
     addHinge(hinge);
 }
 
@@ -115,7 +132,7 @@ function getLoad() {
     const all_valid = [...inputs].every(i => i.reportValidity());
     if (!all_valid) return;
 
-    switch(loadType) {
+    switch (loadType) {
         case "point": {
             load = {
                 type: loadType,
@@ -128,8 +145,8 @@ function getLoad() {
         case "uniform": {
             const q0 = document.getElementById("q_start").valueAsNumber;
             const qE = document.getElementById("q_end").valueAsNumber;
-            if (q0>=qE) { 
-                document.querySelector("#out").textContent = "Początek obciązenia musi być przed jego końcem"; 
+            if (q0 >= qE) {
+                document.querySelector("#out").textContent = "Początek obciązenia musi być przed jego końcem";
                 return;
             }
             load = {
@@ -151,8 +168,8 @@ function getLoad() {
         case "axial": {
             const a0 = document.getElementById("axial_q_start").valueAsNumber;
             const aE = document.getElementById("axial_q_end").valueAsNumber;
-            if (a0>=aE) { 
-                document.querySelector("#out").textContent = "Początek obciązenia musi być przed jego końcem"; 
+            if (a0 >= aE) {
+                document.querySelector("#out").textContent = "Początek obciązenia musi być przed jego końcem";
                 return;
             }
             load = {
@@ -209,7 +226,7 @@ document.querySelector("#add_hinge").addEventListener("click", getHinge);
 document.querySelector("#clear_beam").addEventListener("click", clearBeam);
 
 document.querySelectorAll(".slide_val").forEach(s => {
-    s.addEventListener("input", showSlideValue);    
+    s.addEventListener("input", showSlideValue);
 });
 
 document.querySelector("#load_type").addEventListener("change", handleVisibility);
