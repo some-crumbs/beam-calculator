@@ -40,3 +40,9 @@ def test_indeterminacy(supports, hinges, n):
                 supports=[{"type": t, "pos_x": x} for t, x in supports],
                 hinges=[{"pos_x": x} for x in hinges])
     assert beam.indeterminacy == n
+
+def test_fixed_support_only_at_ends():
+    b = Beam(length=6, units="SI", supports=[{"type": "fixed", "pos_x": 0}], loads=[])
+    b = Beam(length=6, units="SI", supports=[{"type": "fixed", "pos_x": 6}], loads=[])
+    with pytest.raises(ValidationError, match="Fixed"):
+        b = Beam(length=6, units="SI", supports=[{"type": "fixed", "pos_x": 3}], loads=[])

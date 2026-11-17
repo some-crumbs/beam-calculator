@@ -20,3 +20,4 @@ def test_result_model():
     )
     assert result.reactions[0].kind == "vertical"
     assert result.V[1] == 500
+    

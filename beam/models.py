@@ -193,6 +193,9 @@ class Beam(BaseModel):
         ids = [el.id for el in elements]
         if len(ids) != len(set(ids)):
             raise ValueError("Duplicated id of an element")
+        for s in self.supports:
+            if s.type == "fixed" and not (math.isclose(0, s.pos_x, abs_tol=1e-9) or math.isclose(self.length, s.pos_x, abs_tol=1e-9)):
+                raise ValueError("Fixed support has to be at the beginning or at the end of a beam")
         return self
 
     @property
