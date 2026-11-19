@@ -1,18 +1,20 @@
 const BEAM_Y = 128;
 const LOAD_H = 32;
 
-export const LOAD_DRAWING = {
+const LOAD_DRAWING = {
     point: drawPointLoad,
     uniform: drawUniformLoad,
     axial: drawAxialLoad,
     moment: drawMoment,
 };
 
-function metersToPixels(x) {
-    const MARGIN = 64;
-    let pixels;
-    pixels = MARGIN + x / state.length * (800-2*MARGIN);
-    return pixels;
+export function renderSketch(beam){
+    const sketch = clearSketch("sketch");
+
+    drawBeam(sketch, 0, beam.length);
+    drawSupports(sketch, beam.supports, beam.length);
+    drawLoads(sketch, beam.loads, beam.length);
+    drawHinge(sketch, beam.hinges, beam.length);
 }
 
 function createSVG(tag, attributes) {
@@ -23,83 +25,82 @@ function createSVG(tag, attributes) {
     return el;
 }
 
-function drawBeam(x0, xE, sketch) {
-    sketch.append(createSVG("line", {x1: metersToPixels(x0), y1: BEAM_Y, x2: metersToPixels(xE), y2: BEAM_Y, stroke: "black", "stroke-width": 8}));
+function metersToPixels(x, length) {
+    const MARGIN = 64;
+    return (MARGIN + x / length * (800-2*MARGIN));
 }
 
-function drawSupport(sketch) {
-    state.supports.forEach((support, i) => {
-        let transform = `translate(${metersToPixels(support.pos_x)}, ${BEAM_Y})`;
-        if (support.type === "fixed" && support.pos_x == state.length) {
+function clearSketch(id) {
+    const sketch = document.getElementById(id);
+    sketch.innerHTML = "";
+    return sketch;
+}
+
+function drawBeam(sketch, x0, xE) {
+    sketch.append(createSVG("line", {
+        x1: metersToPixels(x0, xE), 
+        y1: BEAM_Y, x2: metersToPixels(xE, xE), 
+        y2: BEAM_Y, 
+        stroke: "black", 
+        "stroke-width": 8
+    }));
+}
+
+function drawSupports(sketch, supports, length) {
+    supports.forEach((support, i) => {
+        let transform = `translate(${metersToPixels(support.pos_x, length)}, ${BEAM_Y})`;
+        if (support.type === "fixed" && support.pos_x == length) {
             transform += " scale(-1, -1)";
         }
-        const g = createSVG("g", {
+        const support_group = createSVG("g", {
             transform: transform,
             "data-list": "supports",
             "data-index": i,
         });
         if(support.type === "pinned") {
-            drawPinned(g);
+            drawPinned(support_group);
         } else if (support.type === "roller") {
-            drawRoller(g);
+            drawRoller(support_group);
         } else if(support.type === "fixed") {
-            drawFixed(g);
+            drawFixed(support_group);
         }
-        sketch.append(g);
+        sketch.append(support_group);
     });
-
 }
 
-function drawFixed(g) {
-    g.append(createSVG("line", {
-        x1: 0,
-        y1: 32,
-        x2: 0,
-        y2: -32,
-        stroke: "black",
-        "stroke-width": 2,
-    }));
-    g.append(createSVG("line", {x1: -8, y1: 32, x2: 0, y2: 24, stroke: "black", "stroke-width": 0.5}));
-    g.append(createSVG("line", {x1: -8, y1: 24, x2: 0, y2: 16, stroke: "black", "stroke-width": 0.5}));
-    g.append(createSVG("line", {x1: -8, y1: 16, x2: 0, y2: 8, stroke: "black", "stroke-width": 0.5}));
-    g.append(createSVG("line", {x1: -8, y1: 8, x2: 0, y2: 0, stroke: "black", "stroke-width": 0.5}));
-    g.append(createSVG("line", {x1: -8, y1: 0, x2: 0, y2: -8, stroke: "black", "stroke-width": 0.5}));
-    g.append(createSVG("line", {x1: -8, y1: -8, x2: 0, y2: -16, stroke: "black", "stroke-width": 0.5}));
-    g.append(createSVG("line", {x1: -8, y1: -16, x2: 0, y2: -24, stroke: "black", "stroke-width": 0.5}));
-    g.append(createSVG("line", {x1: -8, y1: -24, x2: 0, y2: -32, stroke: "black", "stroke-width": 0.5}));
+function drawLoads(sketch, loads, length) {
+    loads.forEach((load, i) => {
+        const load_group = createSVG("g", {
+            "data-list": "loads",
+            "data-index": i,
+        })
+        LOAD_DRAWING[load.type](load_group, load, length);
+        sketch.append(load_group);
+    });
 }
 
-function drawRoller(g) {
-    g.append(createSVG("polygon", {points: "0,4 -16,32 16,32", fill: "white", stroke: "black"}));
-    g.append(createSVG("circle", {cx: 0, cy: 0, r: 6, fill: "white", stroke: "black"}));
-    g.append(createSVG("circle", {cx: -12, cy: 36, r: 4, fill: "white", stroke: "black"}));
-    g.append(createSVG("circle", {cx: 0, cy: 36, r: 4, fill: "white", stroke: "black"}));
-    g.append(createSVG("circle", {cx: 12, cy: 36, r: 4, fill: "white", stroke: "black"}));
-    g.append(createSVG("line", {x1: -22, y1: 40, x2: 22, y2: 40, stroke: "black"}));
-}
-
-function drawPinned(g) {
-    g.append(createSVG("polygon", {points: "0,4 -16,32 16,32", fill: "white", stroke: "black"}));
-    g.append(createSVG("circle", {cx: 0, cy: 0, r: 6, fill: "white", stroke: "black"}));
-    g.append(createSVG("line", {x1: -22, y1: 32, x2: 22, y2: 32, stroke: "black"}));
-    g.append(createSVG("line", {x1: -22, y1: 36, x2: 22, y2: 36, stroke: "black"}));
-}
-
-function drawHinge(sketch) {
-    state.hinges.forEach((hinge, i) => {
-        const g = createSVG("g", {
-            transform: `translate(${metersToPixels(hinge.pos_x)}, ${BEAM_Y})`,
+function drawHinge(sketch, hinges, length) {
+    hinges.forEach((hinge, i) => {
+        const hinge_group = createSVG("g", {
+            transform: `translate(${metersToPixels(hinge.pos_x, length)}, ${BEAM_Y})`,
             "data-list": "hinges",
             "data-index": i,
         });
-        g.append(createSVG("circle", {cx: 0, cy: 0, r: 6, fill: "white", stroke: "black"}));
-        sketch.append(g);
+        hinge_group.append(createSVG("circle", {
+            cx: 0, 
+            cy: 0, 
+            r: 6, 
+            fill: "white", 
+            stroke: "black"
+        }));
+        sketch.append(hinge_group);
     });
 }
 
-function drawPointLoad(g, load) {
-    let transform = `translate(${metersToPixels(load.pos_x)}, ${BEAM_Y}) rotate(${-(load.angle + 90)})`;
+function drawPointLoad(g, load, length) {
+    let transform = `translate(${metersToPixels(load.pos_x, length)}, ${BEAM_Y}) rotate(${-(load.angle + 90)})`;
     if(load.force < 0) transform += " scale(1, -1)";
+
     g.setAttribute("transform", transform);
     g.append(createSVG("line", {
         x1: 0, 
@@ -116,10 +117,10 @@ function drawPointLoad(g, load) {
     }));
 }
 
-function drawUniformLoad(g, load) {
-    const w = metersToPixels(load.end_x) - metersToPixels(load.start_x);
+function drawUniformLoad(g, load, length) {
+    const w = metersToPixels(load.end_x, length) - metersToPixels(load.start_x, length);
     const arrowCount = Math.max(2, Math.round(w/30));
-    let transform = `translate(${metersToPixels(load.start_x)}, ${BEAM_Y})`;
+    let transform = `translate(${metersToPixels(load.start_x, length)}, ${BEAM_Y})`;
     if (load.q < 0) transform += " scale(1, -1)";
     g.setAttribute("transform", transform);
     g.append(createSVG("rect", {
@@ -134,32 +135,13 @@ function drawUniformLoad(g, load) {
     drawArrows(arrowCount, g, w);
 }
 
-function drawArrows(count, g, w) {
-    for (let i = 0; i <= count; i++) {
-        const x = i * w / count;
-        g.append(createSVG("line", {
-            x1: x,
-            y1: 0,
-            x2: x,
-            y2: -LOAD_H,
-            stroke: "black",
-            "stroke-width": 1,
-        }));
-        g.append(createSVG("polygon", {
-            points: `${x},0 ${x - 3},-6 ${x + 3},-6`,
-            fill: "black",
-            stroke: "black",
-        }));     
-    }
-}
-
-function drawAxialLoad(g, load) {
-    const w = metersToPixels(load.end_x) - metersToPixels(load.start_x);
+function drawAxialLoad(g, load, length) {
+    const w = metersToPixels(load.end_x, length) - metersToPixels(load.start_x, length);
     let transform;
     if (load.n < 0){
-        transform = `translate(${metersToPixels(load.end_x)}, ${BEAM_Y}) scale(-1, 1)`;
+        transform = `translate(${metersToPixels(load.end_x, length)}, ${BEAM_Y}) scale(-1, 1)`;
     } else {
-        transform = `translate(${metersToPixels(load.start_x)}, ${BEAM_Y})`;
+        transform = `translate(${metersToPixels(load.start_x, length)}, ${BEAM_Y})`;
     }
     g.setAttribute("transform", transform);
     g.append(createSVG("line", {
@@ -181,32 +163,10 @@ function drawAxialLoad(g, load) {
     drawAxialArrows(g, w);
 }
 
-function drawAxialArrows(g, width) {
-    const y = -LOAD_H * 0.8;
-    const len = 10;
-    const count = Math.max(2, Math.round(width / 15));
-    for (let i = 0; i < count; i++) {
-        const x = i * width / count;
-        g.append(createSVG("line", {
-            x1: x,
-            y1: y,
-            x2: x + len - 4,
-            y2: y,
-            stroke: "black",
-            "stroke-width": 1.5,
-        }));
-        g.append(createSVG("polygon", {
-            points: `${x + len},${y} ${x + len - 5},${y - 3} ${x + len - 5},${y + 3}`,
-            fill: "black",
-        }));
-    }
-}
+function drawMoment(g, load, length) {
+    let transform = `translate(${metersToPixels(load.pos_x, length)}, ${BEAM_Y}) rotate(60)`;
+    if(load.moment < 0) transform += " scale(1, -1)";
 
-function drawMoment(g, load) {
-    let transform = `translate(${metersToPixels(load.pos_x)}, ${BEAM_Y}) rotate(60)`;
-    if(load.moment < 0) {
-        transform += " scale(1, -1)";
-    }
     g.setAttribute("transform", transform);
     g.append(createSVG("line", {
         x1: 0, 
@@ -229,13 +189,74 @@ function drawMoment(g, load) {
     }));
 }
 
-function drawLoads(sketch) {
-    state.loads.forEach((load, i) => {
-        const g = createSVG("g", {
-            "data-list": "loads",
-            "data-index": i,
-        })
-        LOAD_DRAWING[load.type](g, load);
-        sketch.append(g);
-    });
+// ~~supports hardcoded~~
+function drawFixed(g) {
+    g.append(createSVG("line", {
+        x1: 0,
+        y1: 32,
+        x2: 0,
+        y2: -32,
+        stroke: "black",
+        "stroke-width": 2,
+    }));
+    for (let i=0; i < 4; i++) {
+        g.append(createSVG("line", {x1: -8, y1: i*8, x2: 0, y2: (i-1)*8, stroke: "black", "stroke-width": 0.5}));
+        g.append(createSVG("line", {x1: -8, y1: -(i-1)*8, x2: 0, y2: -i*8, stroke: "black", "stroke-width": 0.5}));
+    }
+}
+
+function drawRoller(g) {
+    g.append(createSVG("polygon", {points: "0,4 -16,32 16,32", fill: "white", stroke: "black"}));
+    g.append(createSVG("circle", {cx: 0, cy: 0, r: 6, fill: "white", stroke: "black"}));
+    g.append(createSVG("circle", {cx: -12, cy: 36, r: 4, fill: "white", stroke: "black"}));
+    g.append(createSVG("circle", {cx: 0, cy: 36, r: 4, fill: "white", stroke: "black"}));
+    g.append(createSVG("circle", {cx: 12, cy: 36, r: 4, fill: "white", stroke: "black"}));
+    g.append(createSVG("line", {x1: -22, y1: 40, x2: 22, y2: 40, stroke: "black"}));
+}
+
+function drawPinned(g) {
+    g.append(createSVG("polygon", {points: "0,4 -16,32 16,32", fill: "white", stroke: "black"}));
+    g.append(createSVG("circle", {cx: 0, cy: 0, r: 6, fill: "white", stroke: "black"}));
+    g.append(createSVG("line", {x1: -22, y1: 32, x2: 22, y2: 32, stroke: "black"}));
+    g.append(createSVG("line", {x1: -22, y1: 36, x2: 22, y2: 36, stroke: "black"}));
+}
+
+function drawArrows(count, g, w) {
+    for (let i = 0; i <= count; i++) {
+        const x = i * w / count;
+        g.append(createSVG("line", {
+            x1: x,
+            y1: 0,
+            x2: x,
+            y2: -LOAD_H,
+            stroke: "black",
+            "stroke-width": 1,
+        }));
+        g.append(createSVG("polygon", {
+            points: `${x},0 ${x - 3},-6 ${x + 3},-6`,
+            fill: "black",
+            stroke: "black",
+        }));     
+    }
+}
+
+function drawAxialArrows(g, width) {
+    const y = -LOAD_H * 0.8;
+    const len = 10;
+    const count = Math.max(2, Math.round(width / 15));
+    for (let i = 0; i < count; i++) {
+        const x = i * width / count;
+        g.append(createSVG("line", {
+            x1: x,
+            y1: y,
+            x2: x + len - 4,
+            y2: y,
+            stroke: "black",
+            "stroke-width": 1.5,
+        }));
+        g.append(createSVG("polygon", {
+            points: `${x + len},${y} ${x + len - 5},${y - 3} ${x + len - 5},${y + 3}`,
+            fill: "black",
+        }));
+    }
 }

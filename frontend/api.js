@@ -9,21 +9,3 @@ export async function solve(beam) {
     return data;
 }
 
-export async function onCalculate() {
-    const out = document.querySelector("#out");
-    out.textContent = "Solving…";
-    try {
-        const data = await solve(state);
-        out.textContent = JSON.stringify(data.reactions, null, 2);
-        drawGraphs(data);
-    } catch (err) {
-        if (typeof (err.detail) === "string") {
-            out.textContent = "Error:\n" + err.detail;
-        } else if (Array.isArray(err.detail)) {
-            out.textContent = "Error:\n" + err.detail[0].msg;
-        } else {
-            out.textContent = "Error:\n" + err.message;
-            console.error(err);
-        }
-    }
-}

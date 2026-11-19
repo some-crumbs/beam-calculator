@@ -16,3 +16,6 @@ wheels/
 .pytest_cache/
 
 scratch.py
+
+# Personal notes
+notes.md

@@ -7,20 +7,17 @@ export function getLength(supports, loads, hinges) {
     const length_container = document.querySelector("#length");
     const elements = [...supports, ...loads, ...hinges]
 
-    if (!length.reportValidity()) return;
-
+    
     const newLength = length_container.valueAsNumber;
-
+    
     if (elements.some(el => (el.end_x ?? el.pos_x) > newLength)) {
         document.getElementById("out").textContent = "An element is out of the beam"
         return;
     }
-
+    
     const length = newLength;
 
-    handlePositionSliders();
-    render();
-
+    if (!length_container.reportValidity()) return;
     return length;
 }
 
@@ -31,8 +28,7 @@ export function getSupport(length) {
     if (support_type.value === "fixed") {
         pos = pos < length / 2 ? 0 : length;
     }
-    const support = {type: support_type, pos_x: pos};
-    // addSupport({ type: support_type.value, pos_x: pos});
+    const support = {type: support_type.value, pos_x: pos};
     return support;
 }
 
@@ -97,7 +93,6 @@ export function getLoad() {
             return;
         }
     }
-    // addLoad(load);
     return load;
 }
 
@@ -105,4 +100,34 @@ export function getHinge() {
     const hinge_pos = document.getElementById("hinge_pos_x").valueAsNumber;
     let hinge = { pos_x: hinge_pos };
     return hinge;
+}
+
+export function snapFixedSupport(length) {
+    const position = document.querySelector("#support_pos_x")
+    const type = document.querySelector('input[name="support-type"]:checked')
+    if (type.value === "fixed") {
+        position.value = position.valueAsNumber < length / 2 ? 0 : length;
+    }
+    showSlideValue();
+}
+
+export function showSlideValue() {
+    document.querySelectorAll('input[type="range"]').forEach(slider => {
+        const out = document.getElementById(slider.dataset.output);
+        out.textContent = slider.value;
+    })
+}
+
+export function handleVisibility() {
+    const fields = document.querySelectorAll(".fields");
+    const selected = document.querySelector("#load_type");
+    fields.forEach(el => {
+        el.hidden = el.dataset.type !== selected.value;
+    });
+}
+
+export function handlePositionSliders(length) {
+    document.querySelectorAll(".pos").forEach(s => {
+        s.max = length;
+    });
 }
