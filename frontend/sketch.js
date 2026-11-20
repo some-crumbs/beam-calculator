@@ -8,9 +8,6 @@ const pointCount = {
     supports: 0,
     hinges: 0
 };
-const BEAM_Y = 128;
-const LOAD_H = 32;
-const MARGIN = 64;
 const LOAD_DRAWING = {
     point: drawPointLoad,
     uniform: drawUniformLoad,
@@ -35,6 +32,9 @@ const UNITS_IMPERIAL = {
     moment: "lbf*ft",
     axial: "lbf/ft"
 };
+const BEAM_Y = 128;
+const LOAD_H = 32;
+const MARGIN = 64;
 let beamLength;
 
 export function renderSketch(beam){
@@ -73,11 +73,12 @@ function drawSupports(sketch, supports) {
    else if (support.type === "roller") drawRoller(shape);
    else if (support.type === "fixed") drawFixed(shape);
 
+        g.append(shape);
         sketch.append(g);
     });
 }
 
-function drawLoads(group, loads) {
+function drawLoads(sketch, loads) {
     loads.forEach((load, i) => {
         const load_group = createSVG("g", {
             "data-list": "loads",
@@ -85,34 +86,37 @@ function drawLoads(group, loads) {
         });
         LOAD_DRAWING[load.type](load_group, load);
         sketch.append(load_group);
+        drawLoadLabels(sketch, 32, 32);
     });
 }
 
 function drawHinge(sketch, hinges) {
     hinges.forEach((hinge, i) => {
-        const hinge_group = createSVG("g", {
-            transform: `translate(${metersToPixels(hinge.pos_x)}, ${BEAM_Y})`,
+        const group = createSVG("g", {
             "data-list": "hinges",
-            "data-index": i,
+            "data-index": i
         });
-        hinge_group.append(createSVG("circle", {
+        const shape = createSVG("g", { transform: `translate(${metersToPixels(hinge.pos_x)}, ${BEAM_Y})` });
+        shape.append(createSVG("circle", {
             cx: 0, 
             cy: 0, 
             r: 6, 
             fill: "white", 
             stroke: "black"
         }));
-        sketch.append(hinge_group);
+        group.append(shape);
+        sketch.append(group);
     });
 }
 
 // ~~load-type specific drawers~~
-function drawPointLoad(sketch, load) {
+function drawPointLoad(group, load) {
     let transform = `translate(${metersToPixels(load.pos_x)}, ${BEAM_Y}) rotate(${-(load.angle + 90)})`;
     if(load.force < 0) transform += " scale(1, -1)";
 
-    sketch.setAttribute("transform", transform);
-    sketch.append(createSVG("line", {
+    const shape = createSVG("g", { transform: transform });
+
+    shape.append(createSVG("line", {
         x1: 0, 
         y1: 0, 
         x2: 0, 
@@ -120,19 +124,21 @@ function drawPointLoad(sketch, load) {
         stroke: "black", 
         "stroke-width": 2
     }));
-    sketch.append(createSVG("polygon", {
+    shape.append(createSVG("polygon", {
         points: "0,0 -3,-6 3,-6",
         fill: "black",
         stroke: "black",
     }));
+    group.append(shape);
 }
 
-function drawUniformLoad(sketch, load) {
-    const w = metersToPixels(load.end_x, beamLength) - metersToPixels(load.start_x, beamLength);
+function drawUniformLoad(group, load) {
     let transform = `translate(${metersToPixels(load.start_x, beamLength)}, ${BEAM_Y})`;
     if (load.q < 0) transform += " scale(1, -1)";
-    sketch.setAttribute("transform", transform);
-    sketch.append(createSVG("rect", {
+    const shape = createSVG("g", { transform: transform });
+    const w = metersToPixels(load.end_x, beamLength) - metersToPixels(load.start_x, beamLength);
+
+    shape.append(createSVG("rect", {
         x: 0, 
         y: -LOAD_H, 
         width: w,
@@ -141,19 +147,19 @@ function drawUniformLoad(sketch, load) {
         stroke: "black", 
         "stroke-width": 2,
     }));
-    drawArrows(sketch, w);
+
+    drawArrows(shape, w);
+    group.append(shape);
 }
 
-function drawAxialLoad(sketch, load) {
-    const w = metersToPixels(load.end) - metersToPixels(load.start_x);
-    let transform;
-    if (load.n < 0){
-        transform = `translate(${metersToPixels(load.end_x)}, ${BEAM_Y}) scale(-1, 1)`;
-    } else {
-        transform = `translate(${metersToPixels(load.start_x)}, ${BEAM_Y})`;
-    }
-    sketch.setAttribute("transform", transform);
-    sketch.append(createSVG("line", {
+// TODO: fix arrows
+function drawAxialLoad(group, load) {
+    let transform = `translate(${metersToPixels(load.start_x)}, ${BEAM_Y})`;
+    if (load.n < 0) transform += " scale(1, -1)";
+    const shape = createSVG("g", { transform: transform });
+    const w = metersToPixels(load.end_x) - metersToPixels(load.start_x);
+
+    shape.append(createSVG("line", {
         x1: 0,
         y1: 0,
         x2: 0,
@@ -161,23 +167,26 @@ function drawAxialLoad(sketch, load) {
         stroke: "black",
         "stroke-width": 2,
     }));
-    sketch.append(createSVG("line", {
+    shape.append(createSVG("line", {
         x1: w,
         y1: 0,
         x2: w,
         y2: -LOAD_H,
         stroke: "black",
         "stroke-width": 2,
-    }))
-    drawAxialArrows(sketch, w);
+    }));
+
+    drawAxialArrows(shape, w);
+    group.append(shape);
 }
 
-function drawMoment(sketch, load) {
+function drawMoment(group, load) {
     let transform = `translate(${metersToPixels(load.pos_x, beamLength)}, ${BEAM_Y}) rotate(60)`;
     if(load.moment < 0) transform += " scale(1, -1)";
+    const shape = createSVG("g", { transform: transform});
 
-    sketch.setAttribute("transform", transform);
-    sketch.append(createSVG("line", {
+    shape.setAttribute("transform", transform);
+    shape.append(createSVG("line", {
         x1: 0, 
         y1: 0, 
         x2: 0, 
@@ -185,22 +194,23 @@ function drawMoment(sketch, load) {
         stroke: "black", 
         "stroke-width": 2
     }));
-    sketch.append(createSVG("path", {
+    shape.append(createSVG("path", {
         d: `M ${-LOAD_H} 0 A ${LOAD_H} ${LOAD_H} 0 0 1 0 ${-LOAD_H+1}`,
         fill: "none",
         stroke: "black",
         "stroke-width": 2,
     }));
-    sketch.append(createSVG("polygon", {
+    shape.append(createSVG("polygon", {
         points: `${-LOAD_H},0 ${-LOAD_H-3},-7 ${-LOAD_H+4},-6`,
         fill: "black",
         stroke: "black",
     }));
+    group.append(shape);
 }
 
 // ~~supports shapes~~
-function drawFixed(sketch) {
-    sketch.append(createSVG("line", {
+function drawFixed(group) {
+    group.append(createSVG("line", {
         x1: 0,
         y1: 32,
         x2: 0,
@@ -209,33 +219,53 @@ function drawFixed(sketch) {
         "stroke-width": 2,
     }));
     for (let i=0; i < 4; i++) {
-        sketch.append(createSVG("line", {x1: -8, y1: i*8, x2: 0, y2: (i-1)*8, stroke: "black", "stroke-width": 0.5}));
-        sketch.append(createSVG("line", {x1: -8, y1: -(i-1)*8, x2: 0, y2: -i*8, stroke: "black", "stroke-width": 0.5}));
+        group.append(createSVG("line", {x1: -8, y1: i*8, x2: 0, y2: (i-1)*8, stroke: "black", "stroke-width": 0.5}));
+        group.append(createSVG("line", {x1: -8, y1: -(i-1)*8, x2: 0, y2: -i*8, stroke: "black", "stroke-width": 0.5}));
     }
 }
 
-function drawRoller(sketch) {
-    sketch.append(createSVG("polygon", {points: "0,4 -16,32 16,32", fill: "white", stroke: "black"}));
-    sketch.append(createSVG("circle", {cx: 0, cy: 0, r: 6, fill: "white", stroke: "black"}));
-    sketch.append(createSVG("circle", {cx: -12, cy: 36, r: 4, fill: "white", stroke: "black"}));
-    sketch.append(createSVG("circle", {cx: 0, cy: 36, r: 4, fill: "white", stroke: "black"}));
-    sketch.append(createSVG("circle", {cx: 12, cy: 36, r: 4, fill: "white", stroke: "black"}));
-    sketch.append(createSVG("line", {x1: -22, y1: 40, x2: 22, y2: 40, stroke: "black"}));
+function drawRoller(group) {
+    group.append(createSVG("polygon", {points: "0,4 -16,32 16,32", fill: "white", stroke: "black"}));
+    group.append(createSVG("circle", {cx: 0, cy: 0, r: 6, fill: "white", stroke: "black"}));
+    group.append(createSVG("circle", {cx: -12, cy: 36, r: 4, fill: "white", stroke: "black"}));
+    group.append(createSVG("circle", {cx: 0, cy: 36, r: 4, fill: "white", stroke: "black"}));
+    group.append(createSVG("circle", {cx: 12, cy: 36, r: 4, fill: "white", stroke: "black"}));
+    group.append(createSVG("line", {x1: -22, y1: 40, x2: 22, y2: 40, stroke: "black"}));
 }
 
-function drawPinned(sketch) {
-    sketch.append(createSVG("polygon", {points: "0,4 -16,32 16,32", fill: "white", stroke: "black"}));
-    sketch.append(createSVG("circle", {cx: 0, cy: 0, r: 6, fill: "white", stroke: "black"}));
-    sketch.append(createSVG("line", {x1: -22, y1: 32, x2: 22, y2: 32, stroke: "black"}));
-    sketch.append(createSVG("line", {x1: -22, y1: 36, x2: 22, y2: 36, stroke: "black"}));
+function drawPinned(group) {
+    group.append(createSVG("polygon", {points: "0,4 -16,32 16,32", fill: "white", stroke: "black"}));
+    group.append(createSVG("circle", {cx: 0, cy: 0, r: 6, fill: "white", stroke: "black"}));
+    group.append(createSVG("line", {x1: -22, y1: 32, x2: 22, y2: 32, stroke: "black"}));
+    group.append(createSVG("line", {x1: -22, y1: 36, x2: 22, y2: 36, stroke: "black"}));
 }
 
 // ~~helpers~~
-function drawArrows(sketch, width) {
+// TODO: fix positioning of the load-labels, implement point-labels
+function drawLoadLabels(group, x, y, label) {
+    const label = createSVG("text", {
+        fill: 0o0,
+        x: x,
+        y: y
+    });
+    label.innerHTML = label;
+    group.append(label);
+}
+
+function drawPointLabels(group, x, y, label) {
+    group.append(createSVG("text", {
+        fill: 0o0,
+        x: x,
+        y: y
+    }));
+    group.innerHTML = label;
+}
+
+function drawArrows(group, width) {
     const count = Math.max(2, Math.round(width / 30));
     for (let i = 0; i <= count; i++) {
         const x = i * width / count;
-        sketch.append(createSVG("line", {
+        group.append(createSVG("line", {
             x1: x,
             y1: 0,
             x2: x,
@@ -243,7 +273,7 @@ function drawArrows(sketch, width) {
             stroke: "black",
             "stroke-width": 1,
         }));
-        sketch.append(createSVG("polygon", {
+        group.append(createSVG("polygon", {
             points: `${x},0 ${x - 3},-6 ${x + 3},-6`,
             fill: "black",
             stroke: "black",
@@ -251,13 +281,13 @@ function drawArrows(sketch, width) {
     }
 }
 
-function drawAxialArrows(sketch, width) {
+function drawAxialArrows(group, width) {
     const y = -LOAD_H * 0.8;
     const len = 10;
     const count = Math.max(2, Math.round(width / 15));
     for (let i = 0; i < count; i++) {
         const x = i * width / count;
-        sketch.append(createSVG("line", {
+        group.append(createSVG("line", {
             x1: x,
             y1: y,
             x2: x + len - 4,
@@ -265,7 +295,7 @@ function drawAxialArrows(sketch, width) {
             stroke: "black",
             "stroke-width": 1.5,
         }));
-        sketch.append(createSVG("polygon", {
+        group.append(createSVG("polygon", {
             points: `${x + len},${y} ${x + len - 5},${y - 3} ${x + len - 5},${y + 3}`,
             fill: "black",
         }));
